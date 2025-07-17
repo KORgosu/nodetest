@@ -18,6 +18,8 @@ jobs:
 
     steps: # 이 Job에서 실행될 단계들 (steps)
       # 1. GitHub 저장소 코드 체크아웃
+      # 이 액션이 코드를 러너의 기본 작업 공간(예: /home/runner/work/nodetest/nodetest/)에 클론합니다.
+      # 만약 package.json이 저장소 루트에 있다면, 이 경로가 올바른 작업 디렉토리가 됩니다.
       - uses: actions/checkout@v2
 
       # 2. Node.js 환경 설정
@@ -27,16 +29,15 @@ jobs:
           node-version: ${{ matrix.node-version }} # Node.js 버전 설정
 
       # 3. 의존성 설치
+      # 'working-directory'를 명시적으로 설정하지 않으면,
+      # actions/checkout이 클론한 저장소의 루트 디렉토리에서 이 명령이 실행됩니다.
       - name: Install dependencies
-        working-directory: nodetest # <-- 이 줄을 추가합니다.
         run: npm install
 
       # 4. 프로젝트 빌드 (build 스크립트가 존재할 때만 실행)
       - name: Build project
-        working-directory: nodetest # <-- 이 줄을 추가합니다.
         run: npm run build --if-present
 
       # 5. 테스트 실행
       - name: Run tests
-        working-directory: nodetest # <-- 이 줄을 추가합니다.
         run: npm test
