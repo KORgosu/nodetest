@@ -30,14 +30,33 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      # 3. 의존성 설치
+      # 3. 작업 디렉토리 설정 (추가된 부분)
+      - name: Set working directory
+        run: |
+          # nodetest 디렉토리가 존재하면 해당 디렉토리로 이동
+          if [ -d "nodetest" ]; then
+            echo "Changing directory to nodetest"
+            cd nodetest
+            echo "::set-output name=current_dir::nodetest"
+          else
+            echo "No nodetest directory found, staying in root"
+            echo "::set-output name=current_dir::."
+          fi
+        id: set_dir # 이 스텝의 ID를 설정하여 나중에 참조할 수 있도록 합니다.
+        shell: bash
+
+      # 4. 의존성 설치
       - name: Install dependencies
+        # 'working-directory'를 동적으로 설정하여 올바른 경로에서 npm 명령이 실행되도록 합니다.
+        working-directory: ${{ steps.set_dir.outputs.current_dir }}
         run: npm install
 
-      # 4. 프로젝트 빌드 (build 스크립트가 있는 경우)
+      # 5. 프로젝트 빌드 (build 스크립트가 있는 경우)
       - name: Build project
+        working-directory: ${{ steps.set_dir.outputs.current_dir }}
         run: npm run build --if-present
 
-      # 5. 테스트 실행
+      # 6. 테스트 실행
       - name: Run tests
+        working-directory: ${{ steps.set_dir.outputs.current_dir }}
         run: npm test
