@@ -1,4 +1,4 @@
-name: Node.js CI/CD to Docker Hub
+name: Node.js CI # 워크플로의 이름
 
 # 워크플로를 트리거할 이벤트 정의
 on:
@@ -7,56 +7,42 @@ on:
   pull_request:
     branches: [main] # main 브랜치로 풀 리퀘스트가 생성될 때
 
-# 워크플로를 구성하는 작업(Job)들
+# jobs 단위로 개별 서버(정확히는 Docker 컨테이너 단위)에서 작업이 수행됩니다.
+# 각 작업은 병렬로 실행되지만, needs: build와 같이 표시해서 기다릴 수도 있습니다.
 jobs:
-  # 빌드 및 테스트 Job
-  build:
-    runs-on: ubuntu-latest # Ubuntu 최신 버전 환경에서 실행
+  build: # 'build'라는 이름의 Job 정의
+    # Ubuntu, Windows, MacOS를 지원하며, 여기서는 Ubuntu를 사용합니다.
+    runs-on: ubuntu-latest
 
+    # node-version과 같이 배열로 되어 있으면, 해당 원소를 순회하면서 작업이 반복해서 실행됩니다.
+    # matrix 때문에 배열만 되는 것 같습니다. (TODO)
+    # 응용해서 runs-on에 여러 OS에서 돌릴 수도 있습니다.
     strategy:
       matrix:
         node-version: [14.x] # Node.js 14.x 버전을 사용
 
-    # --- 중요: 'steps'는 'runs-on' 및 'strategy'와 같은 레벨로 들여쓰기 되어야 합니다. ---
-    steps:
+    # uses 개념은 다른 사람이 작성한 내용을 실행하는 개념입니다.
+    # actions/checkout: GitHub의 마지막 커밋으로 Checkout 합니다.
+    # actions/setup-node: Node.js를 설치합니다.
+    # run 개념은 명령어를 실행합니다. 셸 스크립트와 동일합니다.
+    steps: # 이 Job에서 실행될 단계들 (steps)
       # 1. GitHub 저장소 코드 체크아웃
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0 # Docker 빌드를 위해 전체 Git 히스토리를 가져옵니다.
 
       # 2. Node.js 환경 설정
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
+      - name: Use Node.js ${{ matrix.node-version }} # 단계의 이름
+        uses: actions/setup-node@v1 # 사용할 액션
+        with: # 액션에 전달할 매개변수
+          node-version: ${{ matrix.node-version }} # Node.js 버전 설정
 
-      # 3. 작업 디렉토리 설정 (추가된 부분)
-      - name: Set working directory
-        run: |
-          # nodetest 디렉토리가 존재하면 해당 디렉토리로 이동
-          if [ -d "nodetest" ]; then
-            echo "Changing directory to nodetest"
-            cd nodetest
-            echo "::set-output name=current_dir::nodetest"
-          else
-            echo "No nodetest directory found, staying in root"
-            echo "::set-output name=current_dir::."
-          fi
-        id: set_dir # 이 스텝의 ID를 설정하여 나중에 참조할 수 있도록 합니다.
-        shell: bash
+      # 3. 의존성 설치 (npm install과 같은 기능, 자세한 내용은 npm ci 문서 참조)
+      - run: npm install # 또는 npm ci
 
-      # 4. 의존성 설치
-      - name: Install dependencies
-        # 'working-directory'를 동적으로 설정하여 올바른 경로에서 npm 명령이 실행되도록 합니다.
-        working-directory: ${{ steps.set_dir.outputs.current_dir }}
-        run: npm install
+      # 4. 프로젝트 빌드 (build 스크립트가 존재할 때만 실행)
+      # --if-present 옵션은 npm 스크립트가 존재할 때만 실행시키라는 의미입니다.
+      # 만약 build 스크립트가 없는 경우, 오류 없이 지나갑니다.
+      - run: npm run build --if-present
 
-      # 5. 프로젝트 빌드 (build 스크립트가 있는 경우)
-      - name: Build project
-        working-directory: ${{ steps.set_dir.outputs.current_dir }}
-        run: npm run build --if-present
-
-      # 6. 테스트 실행
-      - name: Run tests
-        working-directory: ${{ steps.set_dir.outputs.current_dir }}
-        run: npm test
+      # 5. 테스트 실행
+      - run: npm test # package.json에 정의된 test 스크립트를 실행합니다.
+                      # test 스크립트가 없으면 오류가 발생합니다.
