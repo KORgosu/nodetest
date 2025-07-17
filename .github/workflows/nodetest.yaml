@@ -1,52 +1,23 @@
-name: Node.js CI # 워크플로의 이름
+name: nodejs CICD
 
-# 워크플로를 트리거할 이벤트 정의
 on:
   push:
-    branches: [main] # main 브랜치에 푸시될 때
+    branches: [main]
   pull_request:
-    branches: [main] # main 브랜치로 풀 리퀘스트가 생성될 때
+    branches: [main]
 
-# jobs 단위로 개별 서버에서 작업이 수행됩니다.
 jobs:
-  build: # 'build'라는 이름의 Job 정의
-    runs-on: ubuntu-latest # Ubuntu 최신 버전 환경에서 실행
-
+  build:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [14.x] # Node.js 14.x 버전을 사용
-
-    steps: # 이 Job에서 실행될 단계들 (steps)
-      # 1. GitHub 저장소 코드 체크아웃
-      # 이 액션이 코드를 러너의 기본 작업 공간(예: /home/runner/work/nodetest/nodetest/)에 클론합니다.
-      # 만약 package.json이 저장소 루트에 있다면, 이 경로가 올바른 작업 디렉토리가 됩니다.
+        node-version: [14.x]
+    steps:
       - uses: actions/checkout@v2
-
-      # --- 디버깅을 위한 스텝 추가 ---
-      - name: Debug - Print current directory and list files
-        run: |
-          pwd
-          ls -F
-          ls -F nodetest/ # nodetest 디렉토리가 있다면 그 안의 내용도 확인
-        shell: bash
-      # --- 디버깅 스텝 끝 ---
-
-      # 2. Node.js 환경 설정
-      - name: Use Node.js ${{ matrix.node-version }} # 단계의 이름
-        uses: actions/setup-node@v1 # 사용할 액션
-        with: # 액션에 전달할 매개변수
-          node-version: ${{ matrix.node-version }} # Node.js 버전 설정
-
-      # 3. 의존성 설치
-      # 'working-directory'를 명시적으로 설정하지 않으면,
-      # actions/checkout이 클론한 저장소의 루트 디렉토리에서 이 명령이 실행됩니다.
-      - name: Install dependencies
-        run: npm install
-
-      # 4. 프로젝트 빌드 (build 스크립트가 존재할 때만 실행)
-      - name: Build project
-        run: npm run build --if-present
-
-      # 5. 테스트 실행
-      - name: Run tests
-        run: npm test
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm install
+      - run: npm run build --if-present
+      - run: npm test
